@@ -530,7 +530,13 @@ class LogParser(object):
                 self.parse_line(line)
             else:
                 if not self.game.live:
-                    self.game.go_live()
+                    while not self.game.live:
+                        try:
+                            self.game.go_live()
+                        except:
+                            logger.error('error connecting retrying in 5 seconds')
+                            time.sleep(5)
+                            self.game.live = False
                 time.sleep(.125)
 
     def send_heartbeat(self):
