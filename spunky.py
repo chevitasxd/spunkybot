@@ -3725,7 +3725,12 @@ class Game(object):
         self.urt_modversion = urt_modversion
         game_cfg = ConfigParser.ConfigParser()
         game_cfg.read(config_file)
-        self.quake = PyQuake3("%s:%s" % (game_cfg.get('server', 'server_ip'), game_cfg.get('server', 'server_port')), game_cfg.get('server', 'rcon_password'))
+        urt_server_host = os.environ.get('URT_SERVER_HOST')
+        urt_server_port = os.environ.get('URT_SERVER_PORT')
+        urt_server_address = "%s:%s" % (urt_server_host, urt_server_port)
+        logger.info("Using server '%s'", urt_server_address)
+        urt_servr_pwd = os.environ.get('URT_SERVER_PWD')
+        self.quake = PyQuake3(urt_server_address, urt_servr_pwd)
         self.queue = Queue()
         self.rcon_lock = RLock()
         self.thread_rcon()
