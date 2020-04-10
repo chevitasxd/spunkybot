@@ -39,12 +39,16 @@ import ConfigParser
 import logging.handlers
 import lib.pygeoip as pygeoip
 import lib.schedule as schedule
+import uuid
 
 from lib.pyquake3 import PyQuake3
 from Queue import Queue
 from threading import Thread
 from threading import RLock
 
+from datetime import datetime
+from azure.eventgrid import EventGridClient
+from msrest.authentication import TopicCredentials
 
 # Get an instance of a logger
 logger = logging.getLogger('spunkybot')
@@ -293,6 +297,11 @@ class LogParser(object):
         logger.info("Loading config file   : %s", config_file)
 
         games_log = config.get('server', 'log_file')
+
+        # Add Azure eventgrid
+        credentials = TopicCredentials(os.environ.get('EVENT_GRID_KEY'))
+        self.event_grid_client = EventGridClient(credentials)
+        self.event_grid_endpoint = os.environ.get('EVENT_GRID_ENDPOINT')
 
         self.ffa_lms_gametype = False
         self.ctf_gametype = False
@@ -679,9 +688,22 @@ class LogParser(object):
                   'VotePassed': self.handle_vote_passed, 'Callvote': self.handle_callvote}
 
         try:
-            action = tmp[0].strip()
+            action = tmp[0].strip()            
             if action in option:
                 option[action](line)
+                self.event_grid_client.publish_events(
+                    self.event_grid_endpoint,
+                    events=[{
+                        'id' : uuid.uuid4(),
+                        'subject' : "spunky",
+                        'data': {
+                            'key': line
+                            },
+                        'event_type': action,
+                        'event_time': datetime.utcnow(),
+                        'data_version': 1
+                        }]
+                )
             elif 'Bomb' in action:
                 self.handle_bomb(line)
             elif 'Pop' in action:
